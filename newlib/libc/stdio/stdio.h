@@ -155,6 +155,14 @@ typedef _fpos64_t fpos64_t;
  * Functions defined in ANSI C standard.
  */
 
+#ifndef __VALIST
+#ifdef __GNUC__
+#define __VALIST __gnuc_va_list
+#else
+#define __VALIST char*
+#endif
+#endif
+
 #if __POSIX_VISIBLE
 char *	ctermid (char *);
 #endif
