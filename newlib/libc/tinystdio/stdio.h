@@ -333,10 +333,10 @@ typedef __FILE FILE;
 #else  /* !DOXYGEN */
 #define fdev_setup_stream(stream, p, g, fl, f)	\
 	do { \
+		(stream)->flags = f; \
 		(stream)->put = p; \
 		(stream)->get = g; \
 		(stream)->flush = fl; \
-		(stream)->flags = f; \
 	} while(0)
 #endif /* DOXYGEN */
 
@@ -372,10 +372,10 @@ typedef __FILE FILE;
 #else  /* !DOXYGEN */
 #define FDEV_SETUP_STREAM(p, g, fl, f)		\
 	{ \
+		.flags = f, \
 		.put = p, \
 		.get = g, \
 		.flush = fl, \
-		.flags = f, \
 	}
 #endif /* DOXYGEN */
 
