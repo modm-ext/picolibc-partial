@@ -29,6 +29,8 @@
 #include <string.h>
 #include <limits.h>
 #include <pthread.h>
+/* Pull in _STDIO_WITH_THREAD_CANCELLATION_SUPPORT */
+#include "../stdio/local.h"
 
 struct history
 {
