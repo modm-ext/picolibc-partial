@@ -73,6 +73,8 @@ QUICKREF
 #error long int is not a 32bit or 64bit byte
 #endif
 
+#undef strncat
+
 char *
 strncat (char *__restrict s1,
 	const char *__restrict s2,

@@ -11,7 +11,6 @@
  * ====================================================
  */
 
-
 /*
 
 FUNCTION
@@ -45,7 +44,7 @@ PORTABILITY
  *
  * kernel function:
  *	__kernel_tan		... tangent function on [-pi/4,pi/4]
- *	__ieee754_rem_pio2	... argument reduction routine
+ *	__rem_pio2	... argument reduction routine
  *
  * Method.
  *      Let S,C and T denote the sin, cos and tan respectively on
@@ -74,32 +73,30 @@ PORTABILITY
 
 #ifndef _DOUBLE_IS_32BITS
 
-#ifdef __STDC__
-	double tan(double x)
-#else
-	double tan(x)
-	double x;
-#endif
+double
+tan(double x)
 {
-	double y[2],z=0.0;
-	__int32_t n,ix;
+    double y[2], z = 0.0;
+    __int32_t n, ix;
 
     /* High word of x. */
-	GET_HIGH_WORD(ix,x);
+    GET_HIGH_WORD(ix, x);
 
     /* |x| ~< pi/4 */
-	ix &= 0x7fffffff;
-	if(ix <= 0x3fe921fb) return __kernel_tan(x,z,1);
+    ix &= 0x7fffffff;
+    if (ix <= 0x3fe921fb)
+        return __kernel_tan(x, z, 1);
 
     /* tan(Inf or NaN) is NaN */
-	else if (ix>=0x7ff00000) return x-x;		/* NaN */
+    else if (ix >= 0x7ff00000)
+        return __math_invalid(x); /* NaN */
 
     /* argument reduction needed */
-	else {
-	    n = __ieee754_rem_pio2(x,y);
-	    return __kernel_tan(y[0],y[1],1-((n&1)<<1)); /*   1 -- n even
+    else {
+        n = __rem_pio2(x, y);
+        return __kernel_tan(y[0], y[1], 1 - ((n & 1) << 1)); /*   1 -- n even
 							-1 -- n odd */
-	}
+    }
 }
 
 #endif /* _DOUBLE_IS_32BITS */

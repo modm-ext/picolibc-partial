@@ -69,6 +69,8 @@ QUICKREF
 /*SUPPRESS 560*/
 /*SUPPRESS 530*/
 
+#undef strcat
+
 char *
 strcat (char *__restrict s1,
 	const char *__restrict s2)
