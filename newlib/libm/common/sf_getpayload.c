@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright © 2020 Keith Packard
+ * Copyright © 2021 Keith Packard
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,26 +33,25 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "dtoa_engine.h"
-#include <_ansi.h>
-#include <stdlib.h>
-#include <string.h>
+#include "fdlibm.h"
 
-char *
-gcvtbuf (double invalue,
-	int ndigit,
-	int *decpt,
-	int *sign,
-	char *ecvt_buf)
+float getpayloadf(const float *x)
 {
-	struct dtoa dtoa;
+    __int32_t ix;
+    GET_FLOAT_WORD(ix, *x);
 
-	if (ndigit > DTOA_MAX_DIG)
-		ndigit = DTOA_MAX_DIG;
-	ndigit = __dtoa_engine(invalue, &dtoa, ndigit, 0);
-	*sign = dtoa.flags & DTOA_MINUS;
-	*decpt = dtoa.exp;
-	memcpy(ecvt_buf, dtoa.digits, ndigit);
-	ecvt_buf[ndigit] = '\0';
-	return ecvt_buf;
+    if ((ix & 0x7f800000) != 0x7f800000 ||
+        ((ix & 0x7fffff) == 0))
+        return -1;
+    ix &= 0x3fffff;
+    return (float) ix;
 }
+
+#ifdef _DOUBLE_IS_32BITS
+
+double getpayload(double *x)
+{
+    return (float) getpayloadf((float *) x);
+}
+
+#endif /* defined(_DOUBLE_IS_32BITS) */

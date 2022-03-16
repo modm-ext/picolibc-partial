@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright © 2020 Keith Packard
+ * Copyright © 2022 Keith Packard
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,33 +33,18 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "dtoa_engine.h"
-#include <_ansi.h>
-#include <stdlib.h>
-#include <string.h>
 
-char *
-fcvtbuf(double invalue,
-	int ndecimal,
-	int *decpt,
-	int *sign,
-	char *fcvt_buf)
+#if (__ARM_FP & 0x4) && !defined(__SOFTFP__)
+#include "fdlibm.h"
+
+float
+fabsf(float x)
 {
-	struct dtoa dtoa;
-	int ndigit;
-
-	/* ndecimal = digits after decimal point desired
-	 * ndigit = digits actually generated
-	 * dtoa.exp = exponent (position of decimal relative to first digit generated)
-	 */
-	ndigit = __dtoa_engine(invalue, &dtoa, DTOA_MAX_DIG, ndecimal + 1);
-	*sign = dtoa.flags & DTOA_MINUS;
-	if (ndigit > 0)
-		*decpt = dtoa.exp + 1;
-	else {
-		*decpt = -ndecimal;
-	}
-	memcpy(fcvt_buf, dtoa.digits, ndigit);
-	fcvt_buf[ndigit] = '\0';
-	return fcvt_buf;
+	float result;
+	__asm__("vabs.f32 %0, %1" : "=t" (result) : "t" (x));
+	return result;
 }
+
+#else
+#include "../../math/sf_fabs.c"
+#endif

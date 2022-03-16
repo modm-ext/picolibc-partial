@@ -33,26 +33,17 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ftoa_engine.h"
+#define _DEFAULT_SOURCE
 #include <_ansi.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
-char *
-gcvtfbuf (float invalue,
-	int ndigit,
-	int *decpt,
-	int *sign,
-	char *ecvt_buf)
+float
+strtof_l (const char *__restrict s00,
+	  char **__restrict se,
+	  locale_t loc)
 {
-	struct ftoa ftoa;
-
-	if (ndigit > FTOA_MAX_DIG)
-		ndigit = FTOA_MAX_DIG;
-	ndigit = __ftoa_engine(invalue, &ftoa, ndigit, 0);
-	*sign = ftoa.flags & FTOA_MINUS;
-	*decpt = ftoa.exp;
-	memcpy(ecvt_buf, ftoa.digits, ndigit);
-	ecvt_buf[ndigit] = '\0';
-	return ecvt_buf;
+        (void) loc;
+	return strtof (s00, se);
 }

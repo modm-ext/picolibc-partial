@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright © 2020 Keith Packard
+ * Copyright © 2022 Keith Packard
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,29 +33,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ftoa_engine.h"
-#include <_ansi.h>
-#include <stdlib.h>
-#include <string.h>
+#include <sys/types.h>
+#include <signal.h>
+#include <unistd.h>
+#include <errno.h>
 
-char *
-fcvtfbuf(float invalue,
-	 int ndecimal,
-	 int *decpt,
-	 int *sign,
-	 char *fcvt_buf)
-{
-	struct ftoa ftoa;
-	int ndigit;
+pid_t getpid(void) { return 1; }
 
-	ndigit = __ftoa_engine(invalue, &ftoa, FTOA_MAX_DIG, ndecimal + 1);
-	*sign = ftoa.flags & FTOA_MINUS;
-	if (ndigit > 0)
-		*decpt = ftoa.exp + 1;
-	else {
-		*decpt = -ndecimal;
-	}
-	memcpy(fcvt_buf, ftoa.digits, ndigit);
-	fcvt_buf[ndigit] = '\0';
-	return fcvt_buf;
-}
+int kill(pid_t pid, int sig) { if (pid == 1) _exit(128 + sig); errno = ESRCH; return -1; }

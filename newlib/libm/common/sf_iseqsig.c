@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright © 2020 Keith Packard
+ * Copyright © 2022 Keith Packard
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,26 +33,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <_ansi.h>
-#include <stdlib.h>
-#include <string.h>
-#include "ftoa_engine.h"
+#include "fdlibm.h"
 
-char *
-ecvtfbuf (float invalue,
-	int ndigit,
-	int *decpt,
-	int *sign,
-	char *ecvt_buf)
+int
+__iseqsigf(float x, float y)
 {
-	struct ftoa ftoa;
-
-	if (ndigit > FTOA_MAX_DIG)
-		ndigit = FTOA_MAX_DIG;
-	ndigit = __ftoa_engine(invalue, &ftoa, ndigit, 0);
-	*sign = ftoa.flags & FTOA_MINUS;
-	*decpt = ftoa.exp + 1;
-	memcpy(ecvt_buf, ftoa.digits, ndigit);
-	ecvt_buf[ndigit] = '\0';
-	return ecvt_buf;
+    if (isnan(x))
+        return __math_invalidf(x);
+    if (isnan(y))
+        return __math_invalidf(y);
+    return x == y;
 }

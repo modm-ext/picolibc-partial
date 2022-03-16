@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright © 2020 Keith Packard
+ * Copyright © 2021 Keith Packard
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,26 +33,28 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "dtoa_engine.h"
-#include <_ansi.h>
-#include <stdlib.h>
-#include <string.h>
+#include <sys/time.h>
+#include "semihost.h"
 
-char *
-ecvtbuf (double invalue,
-	int ndigit,
-	int *decpt,
-	int *sign,
-	char *ecvt_buf)
+int
+gettimeofday(struct timeval *restrict tv, void *restrict tz)
 {
-	struct dtoa dtoa;
+    uint64_t ticks;
+    static uint64_t start_elapsed;
+    static uintptr_t start_clock;
+    static uintptr_t tick_freq;
+    static int been_here;
+    (void) tz;
 
-	if (ndigit > DTOA_MAX_DIG)
-		ndigit = DTOA_MAX_DIG;
-	ndigit = __dtoa_engine(invalue, &dtoa, ndigit, 0);
-	*sign = dtoa.flags & DTOA_MINUS;
-	*decpt = dtoa.exp + 1;
-	memcpy(ecvt_buf, dtoa.digits, ndigit);
-	ecvt_buf[ndigit] = '\0';
-	return ecvt_buf;
+    if (!been_here) {
+        start_clock = sys_semihost_clock();
+        start_elapsed = sys_semihost_elapsed();
+        tick_freq = sys_semihost_tickfreq();
+    }
+
+    ticks = (uint64_t) start_clock * tick_freq + (sys_semihost_elapsed() - start_elapsed);
+
+    tv->tv_sec = (time_t) (ticks / tick_freq);
+    tv->tv_usec = (suseconds_t) (ticks % tick_freq) * 1000000 / tick_freq;
+    return 0;
 }
