@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright © 2019 Keith Packard
+ * Copyright © 2023 Keith Packard
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,60 +33,45 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "semihost-private.h"
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
+#define _DEFAULT_SOURCE
+#include <_ansi.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-extern struct timeval __semihost_creat_time _ATTRIBUTE((__weak__));
-extern int gettimeofday(struct timeval *restrict tv, void *restrict tz) _ATTRIBUTE((__weak__));
+#define INCR    16
 
-/*
- * note: binary mode has been chosen below because otherwise
- *       files are treated on host side as text files which
- *       is most probably not intented.  This means that
- *       data transfer is transparent between target and host.
- */
-
-int
-open(const char *pathname, int flags, ...)
+_ssize_t
+getdelim (char **restrict lineptr, size_t *restrict nptr,
+          int delim, FILE *restrict stream)
 {
-	int semiflags = 0;
+    char *line = *lineptr;
+    size_t n = *nptr;
+    _ssize_t count = 0;
 
-	switch (flags & (O_RDONLY|O_WRONLY|O_RDWR)) {
-	case O_RDONLY:
-		semiflags = SH_OPEN_R_B;		/* 'rb' */
-		break;
-	case O_WRONLY:
-		if (flags & O_TRUNC)
-			semiflags = SH_OPEN_W_B;	/* 'wb' */
-		else
-			semiflags = SH_OPEN_A_B;	/* 'ab' */
-		break;
-	default:
-		if (flags & O_TRUNC)
-			semiflags = SH_OPEN_W_PLUS_B;	/* 'wb+' */
-		else
-			semiflags = SH_OPEN_A_PLUS_B;	/* 'ab+' */
-		break;
-	}
+    for (;;) {
+        int c = getc(stream);
+        if (c == EOF)
+            break;
 
-	int ret;
-	do {
-		ret = sys_semihost_open(pathname, semiflags);
-	}
-#ifdef TINY_STDIO
-	while(0);
-#else
-	while (0 <= ret && ret <= 2);
-#endif
-	if (ret == -1)
-		errno = sys_semihost_errno();
-        else if (&__semihost_creat_time && gettimeofday)
-                gettimeofday(&__semihost_creat_time, NULL);
+        if (count >= (_ssize_t) n) {
+            size_t newsize = n + INCR;
+            char *newline = realloc(line, newsize);
+            if (newline == NULL) {
+                count = -1;
+                break;
+            }
+            line = newline;
+            n = newsize;
+        }
 
-	return ret;
+        line[count++] = c;
+        if (c == delim) {
+            line[count] = '\0';
+            break;
+        }
+    }
+
+    *lineptr = line;
+    *nptr = n;
+    return count;
 }

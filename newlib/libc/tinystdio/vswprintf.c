@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright © 2019 Keith Packard
+ * Copyright © 2023 Keith Packard
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,60 +33,22 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "semihost-private.h"
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-
-extern struct timeval __semihost_creat_time _ATTRIBUTE((__weak__));
-extern int gettimeofday(struct timeval *restrict tv, void *restrict tz) _ATTRIBUTE((__weak__));
-
-/*
- * note: binary mode has been chosen below because otherwise
- *       files are treated on host side as text files which
- *       is most probably not intented.  This means that
- *       data transfer is transparent between target and host.
- */
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <wchar.h>
+#include "stdio_private.h"
 
 int
-open(const char *pathname, int flags, ...)
+vswprintf(wchar_t *s, size_t len, const wchar_t *fmt, va_list ap)
 {
-	int semiflags = 0;
+	struct __file_str f = FDEV_SETUP_STRING_WRITE((char *) s, len * sizeof(wchar_t));
+	int i;
 
-	switch (flags & (O_RDONLY|O_WRONLY|O_RDWR)) {
-	case O_RDONLY:
-		semiflags = SH_OPEN_R_B;		/* 'rb' */
-		break;
-	case O_WRONLY:
-		if (flags & O_TRUNC)
-			semiflags = SH_OPEN_W_B;	/* 'wb' */
-		else
-			semiflags = SH_OPEN_A_B;	/* 'ab' */
-		break;
-	default:
-		if (flags & O_TRUNC)
-			semiflags = SH_OPEN_W_PLUS_B;	/* 'wb+' */
-		else
-			semiflags = SH_OPEN_A_PLUS_B;	/* 'ab+' */
-		break;
-	}
+        f.file.flags |= __SWIDE;
+	i = vfwprintf(&f.file, fmt, ap);
+	if (i >= 0)
+		s[i] = 0;
 
-	int ret;
-	do {
-		ret = sys_semihost_open(pathname, semiflags);
-	}
-#ifdef TINY_STDIO
-	while(0);
-#else
-	while (0 <= ret && ret <= 2);
-#endif
-	if (ret == -1)
-		errno = sys_semihost_errno();
-        else if (&__semihost_creat_time && gettimeofday)
-                gettimeofday(&__semihost_creat_time, NULL);
-
-	return ret;
+	return i;
 }

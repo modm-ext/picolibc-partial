@@ -1,4 +1,4 @@
-/* Copyright (c) 2002, 2005, Joerg Wunsch
+/* Copyright (c) 2002, Joerg Wunsch
    All rights reserved.
 
    Redistribution and use in source and binary forms, with or without
@@ -27,36 +27,40 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* $Id: fgetc.c 1944 2009-04-01 23:12:20Z arcanum $ */
-
 #include <stdio.h>
 #include "stdio_private.h"
 #include <sys/cdefs.h>
+#include <wchar.h>
 
-int
-fgetc(FILE *stream)
+wint_t
+fgetwc(FILE *stream)
 {
-	int rv;
-	__ungetc_t unget;
+        union {
+                wchar_t wc;
+                char c[sizeof(wchar_t)];
+        } u;
+        unsigned i;
+        int sc;
+        __ungetc_t unget;
 
 	if ((stream->flags & __SRD) == 0)
-		return EOF;
+		return WEOF;
 
 	if ((unget = __atomic_exchange_ungetc(&stream->unget, 0)) != 0)
-                return (unsigned char) (unget - 1);
+		return (wint_t) (unget - 1);
 
-	rv = stream->get(stream);
-	if (rv < 0) {
-		/* if != _FDEV_ERR, assume it's _FDEV_EOF */
-		stream->flags |= (rv == _FDEV_ERR)? __SERR: __SEOF;
-		return EOF;
-	}
+        for (i = 0; i < sizeof(wchar_t); i++) {
+                sc = stream->get(stream);
+                if (sc < 0)
+                        return WEOF;
+                u.c[i] = (char) sc;
+        }
 
-	return (unsigned char)rv;
+	return (wint_t) u.wc;
 }
 
 #ifdef _HAVE_ALIAS_ATTRIBUTE
-__strong_reference(fgetc, getc);
-#elif !defined(getc)
-int getc(FILE *stream) { return fgetc(stream); }
+__strong_reference(fgetwc, getwc);
+#elif !defined(getwc)
+wint_t getwc(FILE *stream) { return fgetwc(stream); }
 #endif

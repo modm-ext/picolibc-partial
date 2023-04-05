@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright © 2019 Keith Packard
+ * Copyright © 2020 Keith Packard
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,60 +33,23 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "semihost-private.h"
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include "stdio_private.h"
 #include <string.h>
-#include <errno.h>
-
-extern struct timeval __semihost_creat_time _ATTRIBUTE((__weak__));
-extern int gettimeofday(struct timeval *restrict tv, void *restrict tz) _ATTRIBUTE((__weak__));
-
-/*
- * note: binary mode has been chosen below because otherwise
- *       files are treated on host side as text files which
- *       is most probably not intented.  This means that
- *       data transfer is transparent between target and host.
- */
 
 int
-open(const char *pathname, int flags, ...)
+__file_wstr_get(FILE *stream)
 {
-	int semiflags = 0;
+	struct __file_str *sstream = (struct __file_str *) stream;
+	int rv;
 
-	switch (flags & (O_RDONLY|O_WRONLY|O_RDWR)) {
-	case O_RDONLY:
-		semiflags = SH_OPEN_R_B;		/* 'rb' */
-		break;
-	case O_WRONLY:
-		if (flags & O_TRUNC)
-			semiflags = SH_OPEN_W_B;	/* 'wb' */
-		else
-			semiflags = SH_OPEN_A_B;	/* 'ab' */
-		break;
-	default:
-		if (flags & O_TRUNC)
-			semiflags = SH_OPEN_W_PLUS_B;	/* 'wb+' */
-		else
-			semiflags = SH_OPEN_A_PLUS_B;	/* 'ab+' */
-		break;
-	}
-
-	int ret;
-	do {
-		ret = sys_semihost_open(pathname, semiflags);
-	}
-#ifdef TINY_STDIO
-	while(0);
-#else
-	while (0 <= ret && ret <= 2);
-#endif
-	if (ret == -1)
-		errno = sys_semihost_errno();
-        else if (&__semihost_creat_time && gettimeofday)
-                gettimeofday(&__semihost_creat_time, NULL);
-
-	return ret;
+        if (((sstream->pos - sstream->end) & (sizeof(wchar_t) - 1)) == 0)
+        {
+                wchar_t c;
+                memcpy(&c, sstream->pos, sizeof(wchar_t));
+                if (c == L'\0')
+                        return _FDEV_EOF;
+        }
+	rv = (unsigned char) *sstream->pos;
+	sstream->pos++;
+	return rv;
 }

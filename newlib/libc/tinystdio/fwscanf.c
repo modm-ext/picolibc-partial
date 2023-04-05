@@ -1,4 +1,4 @@
-/* Copyright (c) 2002, 2005, Joerg Wunsch
+/* Copyright (c) 2002, Joerg Wunsch
    All rights reserved.
 
    Redistribution and use in source and binary forms, with or without
@@ -27,36 +27,19 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* $Id: fgetc.c 1944 2009-04-01 23:12:20Z arcanum $ */
-
+#include <stdarg.h>
 #include <stdio.h>
-#include "stdio_private.h"
-#include <sys/cdefs.h>
+#include <wchar.h>
 
 int
-fgetc(FILE *stream)
+fwscanf(FILE *stream, const wchar_t *fmt, ...)
 {
-	int rv;
-	__ungetc_t unget;
+	va_list ap;
+	int i;
 
-	if ((stream->flags & __SRD) == 0)
-		return EOF;
+	va_start(ap, fmt);
+	i = vfwscanf(stream, fmt, ap);
+	va_end(ap);
 
-	if ((unget = __atomic_exchange_ungetc(&stream->unget, 0)) != 0)
-                return (unsigned char) (unget - 1);
-
-	rv = stream->get(stream);
-	if (rv < 0) {
-		/* if != _FDEV_ERR, assume it's _FDEV_EOF */
-		stream->flags |= (rv == _FDEV_ERR)? __SERR: __SEOF;
-		return EOF;
-	}
-
-	return (unsigned char)rv;
+	return i;
 }
-
-#ifdef _HAVE_ALIAS_ATTRIBUTE
-__strong_reference(fgetc, getc);
-#elif !defined(getc)
-int getc(FILE *stream) { return fgetc(stream); }
-#endif
