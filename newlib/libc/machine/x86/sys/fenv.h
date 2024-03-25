@@ -35,6 +35,10 @@
 extern "C" {
 #endif
 
+#ifdef _SOFT_FLOAT
+typedef int fenv_t;
+typedef int fexcept_t;
+#else
 
 /* Primary sources:
 
@@ -156,6 +160,20 @@ int fesetprec (int __prec);
 #endif
 
 #endif /* __CYGWIN__ */
+
+#endif /* !_SOFT_FLOAT */
+
+#ifdef _SOFT_FLOAT
+
+#if !defined(__declare_fenv_inline) && defined(__declare_extern_inline)
+#define	__declare_fenv_inline(type) __declare_extern_inline(type)
+#endif
+
+#ifdef __declare_fenv_inline
+#include <machine/fenv-softfloat.h>
+#endif
+
+#endif
 
 #ifdef __cplusplus
 }

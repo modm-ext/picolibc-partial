@@ -23,9 +23,13 @@ _BEGIN_STD_C
 #if defined(__arm__) || defined(__thumb__)
 /*
  * All callee preserved registers:
- * v1 - v7, fp, ip, sp, lr, f4, f5, f6, f7
+ *  core registers:
+ *   r4 - r10, fp, sp, lr
+ *  VFP registers (architectural support dependent):
+ *   d8 - d15
  */
-#define _JBLEN 23
+#define _JBLEN 20
+#define _JBTYPE long long
 #endif
 
 #if defined(__aarch64__)
@@ -184,14 +188,14 @@ _BEGIN_STD_C
 #endif
 
 #ifdef __PPC__
+#ifdef __powerpc64__
 #ifdef __ALTIVEC__
-#ifdef _LP64
-#define _JBLEN 96
+#define _JBLEN 70
 #else
-#define _JBLEN 64
+#define _JBLEN 43
 #endif
 #else
-#ifdef _LP64
+#ifdef __ALTIVEC__
 #define _JBLEN 64
 #else
 #define _JBLEN 32
@@ -319,22 +323,24 @@ _BEGIN_STD_C
    (where "proc" is the procedure that calls setjmp): 4-12 registers
    from the window of proc, the 4 words from the save area at proc's $sp
    (in case a subsequent alloca in proc moves $sp), and the return
-   address within proc.  Everything else is saved on the stack in the
-   normal save areas.  The jmp_buf structure is:
+   address within proc. Everything else is saved on the stack in the
+   normal save areas. The jmp_buf structure is:
 
-  	struct jmp_buf {
-  	    int regs[12];
-  	    int save[4];
-  	    void *return_address;
-  	}
+   struct jmp_buf {
+      int regs[12];
+      int save[4];
+      void *return_address;
+   }
 
    See the setjmp code for details.  */
 
-#define _JBLEN		17	/* 12 + 4 + 1 */
+/* sizeof(struct jmp_buf) */
+#define _JBLEN 17
 
 #else /* __XTENSA_CALL0_ABI__ */
 
-#define _JBLEN		6	/* a0, a1, a12, a13, a14, a15 */
+/* a0, a1, a12, a13, a14, a15 */
+#define _JBLEN 6
 
 #endif /* __XTENSA_CALL0_ABI__ */
 #endif /* __XTENSA__ */

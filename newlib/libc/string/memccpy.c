@@ -64,7 +64,8 @@ memccpy (void *__restrict dst0,
 	size_t len0)
 {
 
-#if defined(PREFER_SIZE_OVER_SPEED) || defined(__OPTIMIZE_SIZE__)
+#if defined(PREFER_SIZE_OVER_SPEED) || defined(__OPTIMIZE_SIZE__) || \
+    defined(PICOLIBC_NO_OUT_OF_BOUNDS_READS)
   void *ptr = NULL;
   char *dst = (char *) dst0;
   char *src = (char *) src0;
@@ -82,11 +83,11 @@ memccpy (void *__restrict dst0,
   return ptr;
 #else
   void *ptr = NULL;
-  char *dst = dst0;
-  const char *src = src0;
+  unsigned char *dst = dst0;
+  const unsigned char *src = src0;
   long *aligned_dst;
   const long *aligned_src;
-  char endchar = endchar0 & 0xff;
+  unsigned char endchar = endchar0 & 0xff;
 
   /* If the size is small, or either SRC or DST is unaligned,
      then punt into the byte copy loop.  This should be rare.  */
@@ -120,8 +121,8 @@ memccpy (void *__restrict dst0,
         }
 
        /* Pick up any residual with a byte copier.  */
-      dst = (char*)aligned_dst;
-      src = (char*)aligned_src;
+      dst = (unsigned char*)aligned_dst;
+      src = (unsigned char*)aligned_src;
     }
 
   while (len0--)

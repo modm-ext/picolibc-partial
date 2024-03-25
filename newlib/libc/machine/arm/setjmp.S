@@ -3,7 +3,7 @@
    Copyright (c) 1997 Nick Clifton, Cygnus Solutions
  */
 
-#include "acle-compat.h"
+#include "machine/acle-compat.h"
 
 /* ANSI concatenation macros.  */
 #define CONCAT(a, b)  CONCAT2(a, b)
@@ -22,6 +22,11 @@
 #define TYPE(x)
 #define SIZE(x)
 #endif
+
+/* Jump buffer allocation sizes.  */
+#define JUMPBUF_CORE_REGS_SIZE (10 * 4)
+#define JUMPBUF_FP_REGS_SIZE (8 * 8)
+#define JUMPBUF_PAC (JUMPBUF_CORE_REGS_SIZE + JUMPBUF_FP_REGS_SIZE + 0)
 
 /* Arm/Thumb interworking support:
 
@@ -59,6 +64,28 @@
    For Thumb-2 do everything in Thumb mode.  */
 
 	.syntax unified
+
+/*  GCC 12.1 and later and clang will tell the assembler exactly which
+    floating point (or MVE) unit is required and we don't want to
+    override that.  Conversely, older versions of the compiler don't
+    pass this information so we need to enable the VFP version that is
+    most appropriate.  The choice here should support all suitable VFP
+    versions that the older toolchains can handle.  */
+#if __GNUC__ && __GNUC__ < 12 && !defined(__clang__)
+/*  Ensure that FPU instructions are correctly compiled and, likewise,
+    the appropriate build attributes are added to the resulting object
+    file.  Check whether the MVE extension is present and whether
+    we have support for hardware floating point-operations.  VFPxd
+    covers all the cases we need in this file for hardware
+    floating-point and should be compatible with all required FPUs
+    that we need to support.  */
+# if __ARM_FP
+	.fpu vfpxd
+# endif
+# if __ARM_FEATURE_MVE
+	.arch_extension mve
+# endif
+#endif
 
 #if __ARM_ARCH_ISA_THUMB == 1 && !__ARM_ARCH_ISA_ARM
 /* ARMv6-M-like has to be implemented in Thumb mode.  */
@@ -116,7 +143,7 @@ SYM (longjmp):
 #else
 #define RET	tst		lr, #1; \
 	        moveq		pc, lr ; \
-.word           0xe12fff1e	/* bx lr */
+.inst           0xe12fff1e	/* bx lr */
 #endif
 
 #ifdef __thumb2__
@@ -156,6 +183,7 @@ SYM (.arm_start_of.\name):
 	.align 2
 	MODE
 	.globl SYM (\name)
+	.cfi_startproc
 	TYPE (\name)
 SYM (\name):
 	PROLOGUE \name
@@ -163,6 +191,7 @@ SYM (\name):
 
 .macro FUNC_END name
 	RET
+	.cfi_endproc
 	SIZE (\name)
 .endm
 
@@ -172,22 +201,38 @@ SYM (\name):
 
 	FUNC_START setjmp
 
+#if __ARM_FEATURE_PAC_DEFAULT
+# if __ARM_FEATURE_BTI_DEFAULT
+	pacbti	ip, lr, sp
+# else
+	pac	ip, lr, sp
+# endif /* __ARM_FEATURE_BTI_DEFAULT */
+	mov r3, ip
+	str r3, [r0, #JUMPBUF_PAC]
+	.cfi_register 143, 12
+#else
+# if __ARM_FEATURE_BTI_DEFAULT
+	bti
+# endif /* __ARM_FEATURE_BTI_DEFAULT */
+#endif /* __ARM_FEATURE_PAC_DEFAULT */
+
 	/* Save all the callee-preserved registers into the jump buffer.  */
 #ifdef __thumb2__
 	mov		ip, sp
-	stmea		a1!, { v1-v7, fp, ip, lr }
+	stmia		r0!, { r4-r10, fp, ip, lr }
 #else
-	stmea		a1!, { v1-v7, fp, ip, sp, lr }
+	stmia		r0!, { r4-r10, fp, sp, lr }
+#endif
+#if defined __ARM_FP || defined __ARM_FEATURE_MVE
+	vstm		r0, { d8-d15 }
 #endif
 
-#if 0	/* Simulator does not cope with FP instructions yet.  */
-#ifndef __SOFTFP__
-	/* Save the floating point registers.  */
-	sfmea		f4, 4, [a1]
-#endif
-#endif
 	/* When setting up the jump buffer return 0.  */
-	mov		a1, #0
+	mov		r0, #0
+#if __ARM_FEATURE_PAC_DEFAULT
+	mov ip, r3
+	aut ip, lr, sp
+#endif /* __ARM_FEATURE_PAC_DEFAULT */
 
 	FUNC_END setjmp
 
@@ -197,29 +242,39 @@ SYM (\name):
 
 	FUNC_START longjmp
 
+#if __ARM_FEATURE_BTI_DEFAULT
+	bti
+#endif /* __ARM_FEATURE_BTI_DEFAULT */
+
+#if __ARM_FEATURE_PAC_DEFAULT
+	/* Keep original jmpbuf address for retrieving pac-code
+	   for authentication.  */
+	mov	r2, r0
+#endif /* __ARM_FEATURE_PAC_DEFAULT */
+
 	/* If we have stack extension code it ought to be handled here.  */
 
 	/* Restore the registers, retrieving the state when setjmp() was called.  */
 #ifdef __thumb2__
-	ldmfd		a1!, { v1-v7, fp, ip, lr }
+	ldmia		r0!, { r4-r10, fp, ip, lr }
 	mov		sp, ip
 #else
-	ldmfd		a1!, { v1-v7, fp, ip, sp, lr }
+	ldmia		r0!, { r4-r10, fp, sp, lr }
+#endif
+#if defined __ARM_FP || defined __ARM_FEATURE_MVE
+	vldm		r0, { d8-d15 }
 #endif
 
-#if 0	/* Simulator does not cope with FP instructions yet.  */
-#ifndef __SOFTFP__
-	/* Restore floating point registers as well.  */
-	lfmfd		f4, 4, [a1]
-#endif
-#endif
 	/* Put the return value into the integer result register.
 	   But if it is zero then return 1 instead.  */
-	movs		a1, a2
-#ifdef __thumb2__
+	movs		r0, r1
 	it		eq
-#endif
-	moveq		a1, #1
+	moveq		r0, #1
+
+#if __ARM_FEATURE_PAC_DEFAULT
+	ldr ip, [r2, #JUMPBUF_PAC]
+	aut ip, lr, sp
+#endif /* __ARM_FEATURE_PAC_DEFAULT */
 
 	FUNC_END longjmp
 #endif

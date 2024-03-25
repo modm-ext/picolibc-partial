@@ -32,8 +32,8 @@
 
 #ifndef __math_denorm
 
-#ifndef PICOLIBC_DOUBLE_NOEXCEPT
-static const FORCE_FLOAT64 VAL = _FLOAT64_MIN;
+#ifndef PICOLIBC_FLOAT64_NOEXCEPT
+static CONST_FORCE_FLOAT64 VAL = _FLOAT64_MIN;
 #endif
 
 HIDDEN __float64

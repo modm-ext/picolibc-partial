@@ -125,6 +125,8 @@ SEEALSO
 #include "../locale/setlocale.h"
 #endif
 
+int VFWPRINTF (FILE *, const wchar_t *, va_list);
+
 /* Currently a test is made to see if long double processing is warranted.
    This could be changed in the future should the __ldtoa code be
    preferred over __dtoa.  */
@@ -142,18 +144,18 @@ SEEALSO
 /* Defined in vfprintf.c. */
 #ifdef _FVWRITE_IN_STREAMIO
 # ifdef STRING_ONLY
-#  define __SPRINT _ssprint
+#  define __SPRINT __sswprint
 # else
-#  define __SPRINT _sprint
+#  define __SPRINT __swprint
 # endif
 int __SPRINT (FILE *, register struct __suio *);
 #else
 # ifdef STRING_ONLY
-#  define __SPRINT _ssputs
+#  define __SPRINT __ssputws
 # else
-#  define __SPRINT _sfputs
+#  define __SPRINT __sfputws
 # endif
-int __SPRINT (FILE *, const char *, size_t);
+int __SPRINT (FILE *, const wchar_t *, size_t);
 #endif
 #ifndef STRING_ONLY
 #ifdef _UNBUF_STREAM_OPT
@@ -188,7 +190,7 @@ __sbwprintf (
 #endif
 
 	/* do the work, then copy any error status */
-	ret = _VFWPRINTF_R (rptr, &fake, fmt, ap);
+	ret = VFWPRINTF (&fake, fmt, ap);
 	if (ret >= 0 && fflush ( &fake))
 		ret = EOF;
 	if (fake._flags & __SERR)
@@ -303,9 +305,13 @@ union arg_val
   wint_t val_wint_t;
 };
 
+typedef struct {
+    va_list ap;
+} my_va_list;
+
 static union arg_val *
 get_arg (int n, wchar_t *fmt,
-                 va_list *ap, int *numargs, union arg_val *args,
+                 my_va_list *my_ap, int *numargs, union arg_val *args,
                  int *arg_type, wchar_t **last_fmt);
 #endif /* !_NO_POS_ARGS */
 
@@ -360,6 +366,8 @@ VFWPRINTF (
 	int arg_index;          /* index into args processed directly */
 	int numargs;            /* number of varargs read */
 	wchar_t *saved_fmt;     /* saved fmt pointer */
+        my_va_list my_ap;
+        va_copy(my_ap.ap, ap);
 	union arg_val args[MAX_POS_ARGS];
 	int arg_type[MAX_POS_ARGS];
 	int is_pos_arg;         /* is current format positional? */
@@ -450,8 +458,8 @@ VFWPRINTF (
 #ifdef _FVWRITE_IN_STREAMIO
 #define	PRINT(ptr, len) { \
 	iovp->iov_base = (char *) (ptr); \
-	iovp->iov_len = (len) * sizeof (wchar_t); \
-	uio.uio_resid += (len) * sizeof (wchar_t); \
+	iovp->iov_len = (len); \
+	uio.uio_resid += iovp->iov_len; \
 	iovp++; \
 	if (++uio.uio_iovcnt >= NIOV) { \
 		if (__SPRINT(fp, &uio)) \
@@ -484,7 +492,7 @@ VFWPRINTF (
 }
 #else
 #define PRINT(ptr, len) {		\
-	if (__SPRINT (fp, (const char *)(ptr), (len) * sizeof (wchar_t)) == EOF) \
+	if (__SPRINT (fp, (ptr), (len)) == EOF) \
 		goto error;		\
 }
 #define	PAD(howmany, with) {		\
@@ -513,13 +521,13 @@ VFWPRINTF (
 	(is_pos_arg							\
 	 ? (n < numargs							\
 	    ? args[n].val_##type					\
-	    : get_arg (data, n, fmt_anchor, &ap, &numargs, args,	\
+	    : get_arg (n, fmt_anchor, &my_ap, &numargs, args,           \
 		       arg_type, &saved_fmt)->val_##type)		\
 	 : (arg_index++ < numargs					\
 	    ? args[n].val_##type					\
 	    : (numargs < MAX_POS_ARGS					\
-	       ? args[numargs++].val_##type = va_arg (ap, type)		\
-	       : va_arg (ap, type))))
+	       ? args[numargs++].val_##type = va_arg (my_ap.ap, type)  \
+	       : va_arg (my_ap.ap, type))))
 #else
 # define GET_ARG(n, ap, type) (va_arg (ap, type))
 #endif
@@ -559,7 +567,10 @@ VFWPRINTF (
 	CHECK_INIT (data, fp);
 	_newlib_flockfile_start (fp);
 
-	ORIENT(fp, 1);
+	if (ORIENT(fp, 1) != 1) {
+		_newlib_flockfile_exit (fp);
+		return (EOF);
+	}
 
 	/* sorry, fwprintf(read_only_file, "") returns EOF, not 0 */
 	if (cantwrite (data, fp)) {
@@ -572,7 +583,7 @@ VFWPRINTF (
 	if ((fp->_flags & (__SNBF|__SWR|__SRW)) == (__SNBF|__SWR) &&
 	    fp->_file >= 0) {
 		_newlib_flockfile_exit (fp);
-		return (__sbwprintf (data, fp, fmt0, ap));
+		return (__sbwprintf (fp, fmt0, ap));
 	}
 #endif
 #else /* STRING_ONLY */
@@ -721,7 +732,7 @@ reswitch:	switch (ch) {
 			if (width >= 0)
 				goto rflag;
 			width = -width;
-			FALLTHROUGH;
+			__PICOLIBC_FALLTHROUGH;
 		case L'-':
 			flags |= LADJUST;
 			goto rflag;
@@ -1704,7 +1715,7 @@ static union arg_val *
 get_arg (
        int n,
        wchar_t *fmt,
-       va_list *ap,
+       my_va_list *ap,
        int *numargs_p,
        union arg_val *args,
        int *arg_type,
@@ -1882,25 +1893,25 @@ get_arg (
 		    switch (spec_type)
 		      {
 		      case LONG_INT:
-			args[numargs++].val_long = va_arg (*ap, long);
+			args[numargs++].val_long = va_arg (ap->ap, long);
 			break;
 		      case QUAD_INT:
-			args[numargs++].val_quad_t = va_arg (*ap, quad_t);
+			args[numargs++].val_quad_t = va_arg (ap->ap, quad_t);
 			break;
 		      case WIDE_CHAR:
-			args[numargs++].val_wint_t = va_arg (*ap, wint_t);
+			args[numargs++].val_wint_t = va_arg (ap->ap, wint_t);
 			break;
 		      case INT:
-			args[numargs++].val_int = va_arg (*ap, int);
+			args[numargs++].val_int = va_arg (ap->ap, int);
 			break;
 		      case CHAR_PTR:
-			args[numargs++].val_wchar_ptr_t = va_arg (*ap, wchar_t *);
+			args[numargs++].val_wchar_ptr_t = va_arg (ap->ap, wchar_t *);
 			break;
 		      case DOUBLE:
-			args[numargs++].val_double = va_arg (*ap, double);
+			args[numargs++].val_double = va_arg (ap->ap, double);
 			break;
 		      case LONG_DOUBLE:
-			args[numargs++].val__LONG_DOUBLE = va_arg (*ap, _LONG_DOUBLE);
+			args[numargs++].val__LONG_DOUBLE = va_arg (ap->ap, _LONG_DOUBLE);
 			break;
 		      }
 		  }
@@ -1921,9 +1932,9 @@ get_arg (
 	      break;
 	    case GETPWB: /* we require format pushback */
 	      --fmt;
-	      FALLTHROUGH;
+	      __PICOLIBC_FALLTHROUGH;
 	    case GETPW:  /* we have a variable precision or width to acquire */
-	      args[numargs++].val_int = va_arg (*ap, int);
+	      args[numargs++].val_int = va_arg (ap->ap, int);
 	      break;
 	    case NUMBER: /* we have a number to process */
 	      number = (ch - '0');
@@ -1956,26 +1967,26 @@ get_arg (
       switch (arg_type[numargs])
 	{
 	case LONG_INT:
-	  args[numargs++].val_long = va_arg (*ap, long);
+	  args[numargs++].val_long = va_arg (ap->ap, long);
 	  break;
 	case QUAD_INT:
-	  args[numargs++].val_quad_t = va_arg (*ap, quad_t);
+	  args[numargs++].val_quad_t = va_arg (ap->ap, quad_t);
 	  break;
 	case CHAR_PTR:
-	  args[numargs++].val_wchar_ptr_t = va_arg (*ap, wchar_t *);
+	  args[numargs++].val_wchar_ptr_t = va_arg (ap->ap, wchar_t *);
 	  break;
 	case DOUBLE:
-	  args[numargs++].val_double = va_arg (*ap, double);
+	  args[numargs++].val_double = va_arg (ap->ap, double);
 	  break;
 	case LONG_DOUBLE:
-	  args[numargs++].val__LONG_DOUBLE = va_arg (*ap, _LONG_DOUBLE);
+	  args[numargs++].val__LONG_DOUBLE = va_arg (ap->ap, _LONG_DOUBLE);
 	  break;
 	case WIDE_CHAR:
-	  args[numargs++].val_wint_t = va_arg (*ap, wint_t);
+	  args[numargs++].val_wint_t = va_arg (ap->ap, wint_t);
 	  break;
 	case INT:
 	default:
-	  args[numargs++].val_int = va_arg (*ap, int);
+	  args[numargs++].val_wchar_ptr_t = va_arg (ap->ap, wchar_t *);
 	  break;
 	}
     }

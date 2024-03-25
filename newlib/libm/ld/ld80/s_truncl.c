@@ -1,3 +1,4 @@
+/* From: @(#)s_floor.c 5.1 93/09/24 */
 /*
  * ====================================================
  * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
@@ -7,8 +8,6 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
- *
- * From: @(#)s_floor.c 5.1 93/09/24
  */
 
 /*
@@ -60,7 +59,9 @@ truncl(long double x)
 			return (x);	/* x is integral */
 		if (huge + x > 0.0L)		/* raise inexact flag */
 			ix1 &= ~m;
-	}
+	} else if (e == 0x7fff - LDBL_MAX_EXP + 1) {
+                return x + x;
+        }
 	SET_LDOUBLE_WORDS(x,es,ix0,ix1);
 	return (x);
 }

@@ -139,7 +139,7 @@ fnmatch(const char *pattern, const char *string, int flags)
 					--pattern;
 				}
 			}
-			/* FALLTHROUGH */
+			__PICOLIBC_FALLTHROUGH;
 		default:
 		norm:
 			if (c == *string)
@@ -206,7 +206,7 @@ rangematch(const char *pattern, char test, int flags, char **newp)
 				c2 = tolower((unsigned char)c2);
 
 			if (
-#ifdef __HAVE_LOCALE_INFO
+#ifdef __HAVE_LOCALE_INFO__
                             __collate_load_error ?
 			    c <= test && test <= c2 :
 			       __collate_range_cmp(c, test) <= 0

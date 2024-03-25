@@ -60,11 +60,14 @@ trunc64(__float64 x)
     if (exp < 0)
         /* less than one, save sign bit */
         mask = 0x8000000000000000LL;
-    else
+    else {
         /* otherwise, save sign, exponent and any useful bits */
+        if (exp >= 64)
+            exp = 63;
         mask = ~(0x000fffffffffffffLL >> exp);
+    }
 
-    return _asdouble(ix & mask);
+    return _asfloat64(ix & mask);
 }
 
 _MATH_ALIAS_d_d(trunc)

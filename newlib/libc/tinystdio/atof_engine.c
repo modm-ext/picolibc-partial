@@ -30,33 +30,31 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
-#define PICOLIBC_FLOAT_PRINTF_SCANF
+#define _NEED_IO_FLOAT
 
-#include "dtoa_engine.h"
+#include "dtoa.h"
+
+#if __GNUC__ == 12 && __GNUC_MINOR__ == 2 && __GNUC_PATCHLEVEL__ == 1 && __OPTIMIZE_SIZE__
+/*
+ * GCC 12.2.1 has a bug in -Os mode on (at least) arm v8.1-m which
+ * mis-compiles this function resulting in an infinite loop. Work
+ * around that by switching optimization mode
+ */
+#pragma GCC optimize("O2")
+#endif
 
 float
 __atof_engine(uint32_t u32, int exp)
 {
-    float flt;
-    const float *f;
-    flt = u32;
-    int exp_cur;
+    float flt = u32;
 
-    if (exp < 0) {
-	f = __ftoa_scale_down + DTOA_SCALE_DOWN_NUM - 1;
-	exp = -exp;
-	exp_cur = 1 << (DTOA_SCALE_DOWN_NUM - 1);
-    } else {
-	f = __ftoa_scale_up + DTOA_SCALE_UP_NUM - 1;
-	exp_cur = 1 << (DTOA_SCALE_UP_NUM - 1);
+    while (exp < 0) {
+        flt *= (float) 1e-1f;
+        exp++;
     }
-    while (exp) {
-	if (exp >= exp_cur) {
-	    flt *= *f;
-	    exp -= exp_cur;
-	}
-	f--;
-	exp_cur >>= 1;
+    while (exp > 0) {
+        flt *= (float) 1e1f;
+        exp--;
     }
     return flt;
 }

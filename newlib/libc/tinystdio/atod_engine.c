@@ -30,32 +30,37 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "dtoa_engine.h"
+#include "stdio_private.h"
 
-double
+#ifdef FLOAT64
+
+#define _NEED_IO_DOUBLE
+
+#include "dtoa.h"
+
+#if __GNUC__ == 12 && __GNUC_MINOR__ == 2 && __GNUC_PATCHLEVEL__ == 1 && __OPTIMIZE_SIZE__
+/*
+ * GCC 12.2.1 has a bug in -Os mode on (at least) arm v8.1-m which
+ * mis-compiles this function resulting in an infinite loop. Work
+ * around that by switching optimization mode
+ */
+#pragma GCC optimize("O2")
+#endif
+
+FLOAT64
 __atod_engine(uint64_t u64, int exp)
 {
-    double flt;
-    const double *f;
-    flt = u64;
-    int exp_cur;
+    FLOAT64 flt = u64;
 
-    if (exp < 0) {
-	f = __dtoa_scale_down + DTOA_SCALE_DOWN_NUM - 1;
-	exp = -exp;
-	exp_cur = 1 << (DTOA_SCALE_DOWN_NUM - 1);
-    } else {
-	f = __dtoa_scale_up + DTOA_SCALE_UP_NUM - 1;
-	exp_cur = 1 << (DTOA_SCALE_UP_NUM - 1);
+    while (exp < 0) {
+        flt *= 1e-1;
+        exp++;
     }
-
-    while (exp) {
-	if (exp >= exp_cur) {
-	    flt *= *f;
-	    exp -= exp_cur;
-	}
-	f--;
-	exp_cur >>= 1;
+    while (exp > 0) {
+        flt *= 1e1;
+        exp--;
     }
     return flt;
 }
+
+#endif

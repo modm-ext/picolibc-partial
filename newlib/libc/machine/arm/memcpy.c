@@ -27,7 +27,7 @@
 /* The structure of the following #if #else #endif conditional chain
    must match the chain in memcpy.S.  */
 
-#include "acle-compat.h"
+#include "machine/acle-compat.h"
 
 #if (defined (__OPTIMIZE_SIZE__) || defined (PREFER_SIZE_OVER_SPEED))
 #define MEMCPY_FALLBACK
@@ -47,12 +47,12 @@
 # include "../../string/memcpy.c"
 
 void *__aeabi_memcpy4 (void *__restrict dest, const void * __restrict source, size_t n)
-	_ATTRIBUTE ((alias ("memcpy")));
+	_ATTRIBUTE ((alias ("memcpy"), weak));
 
 void *__aeabi_memcpy8 (void * __restrict dest, const void * __restrict source, size_t n)
-	_ATTRIBUTE ((alias ("memcpy")));
+	_ATTRIBUTE ((alias ("memcpy"), weak));
 
 void *__aeabi_memcpy (void * __restrict dest, const void * __restrict source, size_t n)
-	_ATTRIBUTE ((alias ("memcpy")));
+	_ATTRIBUTE ((alias ("memcpy"), weak));
 
 #endif

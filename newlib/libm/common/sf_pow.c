@@ -120,7 +120,7 @@ exp2_inline (double_t xd, uint32_t sign_bias)
   t = T[ki % N];
   ski = ki + sign_bias;
   t += ski << (52 - EXP2F_TABLE_BITS);
-  s = asdouble (t);
+  s = asfloat64 (t);
   z = C[0] * r + C[1];
   r2 = r * r;
   y = C[2] * r + 1;
@@ -139,9 +139,9 @@ checkint (uint32_t iy)
     return 0;
   if (e > 0x7f + 23)
     return 2;
-  if (iy & ((1 << (0x7f + 23 - e)) - 1))
+  if (iy & (((uint32_t) 1 << (0x7f + 23 - e)) - 1))
     return 0;
-  if (iy & (1 << (0x7f + 23 - e)))
+  if (iy & ((uint32_t) 1 << (0x7f + 23 - e)))
     return 1;
   return 2;
 }

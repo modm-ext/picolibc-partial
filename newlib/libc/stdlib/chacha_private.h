@@ -22,7 +22,7 @@ D. J. Bernstein
 Public domain.
 */
 
-/* $OpenBSD: chacha_private.h,v 1.2 2013/10/04 07:02:27 djm Exp $ */
+/* $OpenBSD: chacha_private.h,v 1.3 2022/02/28 21:56:29 dtucker Exp $ */
 
 #include <stdint.h>
 
@@ -69,11 +69,10 @@ static const char sigma[16] = "expand 32-byte k";
 static const char tau[16] = "expand 16-byte k";
 
 static void
-chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits,u32 ivbits)
+chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits)
 {
   const char *constants;
 
-  (void) ivbits;
   x->input[4] = U8TO32_LITTLE(k + 0);
   x->input[5] = U8TO32_LITTLE(k + 4);
   x->input[6] = U8TO32_LITTLE(k + 8);
@@ -108,8 +107,8 @@ chacha_encrypt_bytes(chacha_ctx *x,const u8 *m,u8 *c,u32 bytes)
 {
   u32 x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15;
   u32 j0, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15;
-  u8 *ctarget = NULL;
   u8 tmp[64];
+  u8 *ctarget = tmp;
   u_int i;
 
   if (!bytes) return;
