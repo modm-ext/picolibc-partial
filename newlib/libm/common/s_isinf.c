@@ -17,7 +17,6 @@ is preserved.
  */
 
 #include "fdlibm.h"
-#include <ieeefp.h>
 
 #ifdef _NEED_FLOAT64
 

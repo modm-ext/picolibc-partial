@@ -83,7 +83,6 @@ by the Single Unix specification.
 
 No supporting OS subroutine calls are required.
 */
-#include <_ansi.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <string.h>
@@ -99,7 +98,6 @@ No supporting OS subroutine calls are required.
  * iconv interface functions as specified by Single Unix specification.
  */
 
-#ifndef _REENT_ONLY
 iconv_t
 iconv_open (
                       const char *to,
@@ -149,13 +147,12 @@ iconv_open (
   return (void *)ic;
 }
 
-
 size_t
 iconv (iconv_t cd,
-              const char **__restrict inbuf,
-              size_t *__restrict inbytesleft,
-              char **__restrict outbuf,
-              size_t *__restrict outbytesleft)
+       char **__restrict inbuf,
+       size_t *__restrict inbytesleft,
+       char **__restrict outbuf,
+       size_t *__restrict outbytesleft)
 {
   iconv_conversion_t *ic = (iconv_conversion_t *)cd;
 
@@ -255,4 +252,3 @@ iconv_close (iconv_t cd)
 
   return res;
 }
-#endif /* !_REENT_ONLY */
