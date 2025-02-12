@@ -78,7 +78,7 @@ mbsnrtowcs (
 #ifdef _MB_CAPABLE
   if (ps == NULL)
     {
-      static NEWLIB_THREAD_LOCAL mbstate_t _mbsrtowcs_state;
+      static mbstate_t _mbsrtowcs_state;
       ps = &_mbsrtowcs_state;
     }
 #endif
