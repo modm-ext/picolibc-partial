@@ -7,9 +7,9 @@ from pathlib import Path
 import urllib.request
 
 source_paths = [
-    "semihost/**/*.[chSs]",
-    "newlib/libc/**/*.[chSs]",
-    "newlib/libm/**/*.[chSs]",
+    "semihost/**/*.[chSst]",
+    "newlib/libc/**/*.[chSst]",
+    "newlib/libm/**/*.[chSst]",
     "COPYING.*",
 ]
 
