@@ -1,4 +1,4 @@
-# Picolib partial tree
+# Picolibc partial tree
 
 This is a partial copy of the Picolibc repository to reduce repository size.
 The following paths are extracted:
